@@ -19,63 +19,42 @@
   <link href="css/responsive.css" rel="stylesheet" />
   
   <style>
-    .camera-container {
+    .content-container {
       display: flex;
-      flex-direction: column;
-      align-items: center;
-      max-width: 100%;
-      padding: 20px;
-      box-sizing: border-box;
+      justify-content: space-between;
+      flex-wrap: nowrap;
+      gap: 20px;
+    }
+
+    .camera-container {
+      flex: 1;
+      max-width: 50%;
+    }
+
+    .servo-container {
+      flex: 1;
+      max-width: 50%;
     }
 
     #video {
       width: 100%;
-      max-width: 600px;
       height: auto;
-      transform: scaleX(-1); /* Efecto espejo */
-      -webkit-transform: scaleX(-1); /* Safari */
     }
 
-    #capture {
-      margin-top: 20px; /* Ajusta según sea necesario */
-      padding: 10px 20px;
-      font-size: 16px;
-      cursor: pointer;
-      background-color: #007bff;
-      color: white;
-      border: none;
-      border-radius: 5px;
-      box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.2);
-      transition: background-color 0.3s ease;
+    .slider-container {
+      margin-bottom: 15px;
     }
 
-    #capture:hover {
-      background-color: #0056b3;
-    }
-
-    .snapshot {
-      margin-top: 20px;
+    input[type="range"] {
       width: 100%;
-      max-width: 600px;
-      text-align: center;
-    }
-
-    .snapshot img {
-      width: 100%;
-      height: auto;
-      transform: scaleX(-1); /* Efecto espejo */
     }
 
     @media (max-width: 768px) {
-      #capture {
-        width: 100%;
-        padding: 10px 0;
+      .content-container {
+        flex-direction: column;
       }
-    }
-
-    @media (max-width: 480px) {
-      #capture {
-        font-size: 14px;
+      .camera-container, .servo-container {
+        max-width: 100%;
       }
     }
   </style>
@@ -113,7 +92,7 @@
                   <a class="nav-link" href="login.html">Componentes</a>
                 </li>
                 <li class="nav-item active">
-                  <a class="nav-link" href="Camara.html">Cámara</a>
+                  <a class="nav-link" href="Camara.html">Control de Servomotores</a>
                 </li>
               </ul>
             </div>
@@ -126,21 +105,47 @@
     </header>
     <!-- End Header Section -->
 
-    <!-- Camera Section -->
+    <!-- Camera and Servo Control Section -->
     <section class="camera_section layout_padding">
       <div class="container">
         <div class="custom_heading-container">
-          <h1>Captura de Cámara</h1>
+          <h1>Control de Servomotores</h1>
         </div>
-        <div class="camera-container">
-          <video id="video" autoplay></video>
-          <button id="capture">Capturar</button>
-          <canvas id="canvas" style="display:none;"></canvas>
-          <div id="snapshot" class="snapshot"></div>
+        <div class="content-container">
+          <div class="camera-container">
+            <img id="video" src="" alt="ESP32-CAM Stream">
+          </div>
+          <div class="servo-container">
+            <div class="slider-container">
+              <label for="servo1">Servo Base: </label>
+              <input type="range" id="servo1" min="0" max="180" value="90" oninput="updateServo(1, this.value)">
+              <span id="value1">90</span>
+            </div>
+            <div class="slider-container">
+              <label for="servo2">Servo Antebrazo: </label>
+              <input type="range" id="servo2" min="0" max="90" value="45" oninput="updateServo(2, this.value)">
+              <span id="value2">45</span>
+            </div>
+            <div class="slider-container">
+              <label for="servo3">Servo Codo: </label>
+              <input type="range" id="servo3" min="0" max="90" value="45" oninput="updateServo(3, this.value)">
+              <span id="value3">45</span>
+            </div>
+            <div class="slider-container">
+              <label for="servo4">Servo Muñeca: </label>
+              <input type="range" id="servo4" min="0" max="180" value="90" oninput="updateServo(4, this.value)">
+              <span id="value4">90</span>
+            </div>
+            <div class="slider-container">
+              <label for="servo5">Servo Pinza: </label>
+              <input type="range" id="servo5" min="0" max="180" value="90" oninput="updateServo(5, this.value)">
+              <span id="value5">90</span>
+            </div>
+          </div>
         </div>
       </div>
     </section>
-    <!-- End Camera Section -->
+    <!-- End Camera and Servo Control Section -->
 
     <!-- Contact Information -->
     <section class="info_section layout_padding">
@@ -164,7 +169,7 @@
                 <li><a href="service.html">Características</a></li>
                 <li><a href="contact.html">Contáctanos</a></li>
                 <li><a href="login.html">Componentes</a></li>
-                <li><a href="Camara.html">Cámara</a></li>
+                <li><a href="Camara.html">Control Servomotores</a></li>
               </ul>
             </div>
           </div>
@@ -205,38 +210,33 @@
     <script src="js/bootstrap.js"></script>
 
     <script>
-      // Acceder a la cámara
-      const video = document.querySelector("#video");
-      const canvas = document.querySelector("#canvas");
-      const snapshot = document.querySelector("#snapshot");
-      const captureButton = document.querySelector("#capture");
+      let esp32Ip = '';
+      let esp32CamIp = '';
 
-      // Solicitar acceso a la cámara
-      navigator.mediaDevices.getUserMedia({ video: true })
-        .then(stream => {
-          video.srcObject = stream;
-        })
-        .catch(err => {
-          console.error("Error al acceder a la cámara: " + err);
-        });
+      function updateServo(servo, value) {
+        document.getElementById('value' + servo).innerHTML = value;
+        fetch(`http://${esp32Ip}/setServo?servo=${servo}&angle=${value}`)
+          .then(response => response.text())
+          .then(data => console.log(data))
+          .catch(error => console.error('Error:', error));
+      }
 
-      // Capturar la imagen
-      captureButton.addEventListener("click", () => {
-        const context = canvas.getContext("2d");
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        context.translate(canvas.width, 0);
-        context.scale(-1, 1); // Voltear horizontalmente
-        context.drawImage(video, 0, 0, canvas.width, canvas.height);
-        const imageData = canvas.toDataURL("image/png");
+      function getESP32IPs() {
+        esp32Ip = prompt("Por favor, ingresa la IP de tu ESP32 (para control de servos):", "192.168.0.XXX");
+        esp32CamIp = prompt("Por favor, ingresa la IP de tu ESP32-CAM:", "192.168.0.YYY");
+        if (esp32Ip && esp32CamIp) {
+          startVideo();
+        } else {
+          alert("No se proporcionaron IPs válidas. Algunas funciones podrían no estar disponibles.");
+        }
+      }
 
-        // Mostrar la imagen capturada
-        const img = document.createElement("img");
-        img.src = imageData;
-        snapshot.innerHTML = ''; // Limpiar la imagen previa
-        snapshot.appendChild(img);
-        snapshot.style.display = 'block';
-      });
+      function startVideo() {
+        const video = document.getElementById('video');
+        video.src = `http://${esp32CamIp}:81/stream`;
+      }
+
+      window.onload = getESP32IPs;
     </script>
   </div>
 </body>
